@@ -5,6 +5,7 @@ import logging
 import runpy
 import threading
 from pathlib import Path
+from typing import Protocol
 
 runpy.run_path(str(Path(__file__).with_name("_bootstrap.py")), run_name="termux_vision_bootstrap")
 
@@ -16,6 +17,14 @@ from termux_vision.models import FrameRead
 from termux_vision.util import interruptible_sleep
 
 LOGGER = logging.getLogger(__name__)
+
+
+class FrameSource(Protocol):
+    def open(self) -> None: ...
+
+    def read(self) -> FrameRead: ...
+
+    def close(self) -> None: ...
 
 
 class ImageDirSource:
@@ -162,7 +171,7 @@ class StreamSource:
         interruptible_sleep(self._is_running, self._config.reconnect_delay_s, self._config.idle_poll_s)
 
 
-def build_source(config: Config):
+def build_source(config: Config) -> FrameSource:
     if config.source_type == "images":
         return ImageDirSource(config)
     if config.source_type == "video":

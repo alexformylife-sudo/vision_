@@ -21,9 +21,9 @@ from termux_vision.debug_view import (
     save_hsv_calib_frame,
 )
 from termux_vision.detectors import ColorDetector, TagDetector
-from termux_vision.frame_source import build_source
+from termux_vision.frame_source import FrameSource, build_source
 from termux_vision.models import invalid_color, invalid_tag
-from termux_vision.result_sender import build_sender
+from termux_vision.result_sender import ResultSender, build_sender
 from termux_vision.temporal_filter import TemporalFilter
 from termux_vision.util import prepare_frame
 
@@ -35,11 +35,11 @@ SOURCE_ALIASES = {"http": "stream", "rtsp": "stream"}
 @dataclass
 class Pipeline:
     config: Config
-    source: object
+    source: FrameSource
     tag_detector: TagDetector
     color_detector: ColorDetector
     temporal: TemporalFilter
-    sender: object
+    sender: ResultSender
     save_images: bool
     last_frame_at: float = 0.0
     stale: bool = False
@@ -57,7 +57,7 @@ def main(argv: list[str] | None = None) -> int:
     return _run_with_pipeline(config, sender)
 
 
-def _run_with_pipeline(config: Config, sender) -> int:
+def _run_with_pipeline(config: Config, sender: ResultSender) -> int:
     source = build_source(config)
     pipeline = Pipeline(
         config=config,
@@ -80,7 +80,7 @@ def _run_with_pipeline(config: Config, sender) -> int:
         source.close()
 
 
-def _open_source(source) -> bool:
+def _open_source(source: FrameSource) -> bool:
     try:
         source.open()
     except FileNotFoundError as exc:
