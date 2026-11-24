@@ -110,15 +110,15 @@ class Config:
     # 颜色 ROI / HSV / 形态学：下列数值均为模拟样本导出初值，待赛场灯光与支架视角标定。
     color_roi: RatioRoi = field(default_factory=lambda: RatioRoi(0.05, 0.20, 0.95, 0.98))
     color_roi_scale: float = 1.0  # 可调，<1 时在缩小后的 ROI 上认色以省算力
-    red_hsv_low: HsvRange = field(default_factory=lambda: HsvRange(0, 15, 15, 25, 255, 255))
-    red_hsv_high: HsvRange = field(default_factory=lambda: HsvRange(150, 15, 15, 179, 255, 255))
-    yellow_hsv: HsvRange = field(default_factory=lambda: HsvRange(5, 15, 15, 68, 255, 255))
-    blue_hsv: HsvRange = field(default_factory=lambda: HsvRange(80, 15, 15, 160, 255, 255))
+    red_hsv_low: HsvRange = field(default_factory=lambda: HsvRange(0, 40, 35, 15, 255, 255))
+    red_hsv_high: HsvRange = field(default_factory=lambda: HsvRange(165, 40, 35, 179, 255, 255))
+    yellow_hsv: HsvRange = field(default_factory=lambda: HsvRange(20, 60, 48, 36, 255, 255))
+    blue_hsv: HsvRange = field(default_factory=lambda: HsvRange(92, 40, 35, 128, 255, 255))
     color_min_area: int = 200  # 按掩膜总像素计，不靠碎轮廓面积
     color_min_height_width: float = 0.35
     color_min_extent: float = 0.15  # 暗部/高光导致掩膜稀疏时仍过
     color_morph_kernel: int = 1  # 开运算核；1 近似不做
-    color_morph_close_kernel: int = 11  # 闭运算连通同色大块内的暗缝/高光缝
+    color_morph_close_kernel: int = 7  # 连通色块内缝隙；过大易把桌面噪点并成一片黄
     hsv_center_ratio: float = 0.3  # 调参模式：颜色 ROI 中心区域占比，可调
     hsv_percentiles: tuple[int, ...] = (10, 50, 90)
 

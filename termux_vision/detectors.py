@@ -192,7 +192,7 @@ def _pick_dominant_color(config: Config, search: ColorSearch) -> ColorObservatio
     valid = [obs for obs in candidates if _shape_ok(obs, config)]
     if not valid:
         return invalid_color(config.invalid_color)
-    return max(valid, key=lambda obs: obs.contour_area)
+    return max(valid, key=lambda obs: (obs.contour_area, _color_score(obs.color)))
 
 
 def _color_blob_from_mask(
@@ -221,6 +221,12 @@ def _color_mask(hsv: np.ndarray, ranges: tuple[HsvRange, ...], config: Config) -
         k = np.ones((ck, ck), np.uint8)
         merged = cv2.morphologyEx(merged, cv2.MORPH_CLOSE, k)
     return merged
+
+
+def _color_score(color: str) -> int:
+    # 面积相同时优先蓝/红，降低低饱 Hue 漂移把桌面判成黄的概率。
+    order = {"B": 2, "R": 1, "Y": 0}
+    return order.get(color, 0)
 
 
 def _hsv_in_ranges(hsv: np.ndarray, ranges: tuple[HsvRange, ...]) -> np.ndarray:
