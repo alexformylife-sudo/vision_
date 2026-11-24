@@ -172,17 +172,49 @@ def _ensure_dir(config: Config) -> Path | None:
 
 
 def _write_image(path: Path, image: np.ndarray) -> bool:
-    tmp_path = path.with_name(path.name + ".tmp")
+    if _try_write_png_or_jpeg(path, image):
+        return True
+    if path.suffix.lower() != ".png":
+        return False
+    fallback = path.with_suffix(".jpg")
+    LOGGER.warning("PNG 写入不可用，改用 JPEG: %s", fallback)
+    return _try_write_png_or_jpeg(fallback, image)
+
+
+def _try_write_png_or_jpeg(path: Path, image: np.ndarray) -> bool:
+    tmp_path = path.with_name(f"{path.stem}.part{path.suffix}")
     try:
         ok = cv2.imwrite(str(tmp_path), image)
     except (cv2.error, OSError) as exc:
         LOGGER.warning("imwrite 异常 %s: %s", path, exc)
         _remove_if_exists(tmp_path)
+        return _write_image_encoded(path, image, tmp_path)
+    if not ok:
+        LOGGER.warning("imwrite 失败 %s，尝试 imencode", path)
+        _remove_if_exists(tmp_path)
+        return _write_image_encoded(path, image, tmp_path)
+    return _finalize_atomic_write(tmp_path, path)
+
+
+def _write_image_encoded(path: Path, image: np.ndarray, tmp_path: Path) -> bool:
+    ext = path.suffix if path.suffix else ".png"
+    try:
+        ok, buf = cv2.imencode(ext, image)
+    except cv2.error as exc:
+        LOGGER.warning("imencode 异常 %s: %s", path, exc)
         return False
     if not ok:
-        LOGGER.warning("imwrite 失败（目录可能只读）: %s", path)
+        return False
+    try:
+        tmp_path.write_bytes(buf.tobytes())
+    except OSError as exc:
+        LOGGER.warning("写调试图字节失败 %s: %s", path, exc)
         _remove_if_exists(tmp_path)
         return False
+    return _finalize_atomic_write(tmp_path, path)
+
+
+def _finalize_atomic_write(tmp_path: Path, path: Path) -> bool:
     try:
         tmp_path.replace(path)
     except OSError as exc:
