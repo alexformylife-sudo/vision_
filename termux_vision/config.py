@@ -110,14 +110,18 @@ class Config:
     # 颜色 ROI / HSV / 形态学：下列数值均为模拟样本导出初值，待赛场灯光与支架视角标定。
     color_roi: RatioRoi = field(default_factory=lambda: RatioRoi(0.05, 0.20, 0.95, 0.98))
     color_roi_scale: float = 1.0  # 可调，<1 时在缩小后的 ROI 上认色以省算力
-    red_hsv_low: HsvRange = field(default_factory=lambda: HsvRange(0, 75, 60, 12, 255, 255))
-    red_hsv_high: HsvRange = field(default_factory=lambda: HsvRange(168, 75, 60, 179, 255, 255))
-    yellow_hsv: HsvRange = field(default_factory=lambda: HsvRange(22, 68, 52, 33, 255, 255))
+    red_hsv_low: HsvRange = field(default_factory=lambda: HsvRange(0, 85, 70, 12, 255, 255))
+    red_hsv_high: HsvRange = field(default_factory=lambda: HsvRange(168, 85, 70, 179, 255, 255))
+    yellow_hsv: HsvRange = field(default_factory=lambda: HsvRange(22, 72, 58, 33, 255, 255))
     color_yellow_area_weight: float = 0.72  # 选 dominant 时对黄掩膜面积打折，削弱误抢蓝/红
-    blue_hsv: HsvRange = field(default_factory=lambda: HsvRange(100, 75, 60, 125, 255, 255))
-    color_rb_mask_min_mean_s: float = 78.0  # 红/蓝连通域均值，滤掉黑屏 hue 漂移
-    color_rb_mask_min_mean_v: float = 62.0
-    color_min_area: int = 200  # 按掩膜总像素计，不靠碎轮廓面积
+    blue_hsv: HsvRange = field(default_factory=lambda: HsvRange(100, 85, 70, 125, 255, 255))
+    color_min_pixel_saturation: int = 72  # 掩膜内逐像素 S 下限，去掉低饱噪点
+    color_min_pixel_value: int = 68
+    color_rb_mask_min_mean_s: float = 85.0
+    color_rb_mask_min_mean_v: float = 70.0
+    color_y_mask_min_mean_s: float = 78.0
+    color_y_mask_min_mean_v: float = 65.0
+    color_min_area: int = 480  # 最大连通域像素数下限
     color_min_height_width: float = 0.35
     color_min_extent: float = 0.15  # 暗部/高光导致掩膜稀疏时仍过
     color_morph_kernel: int = 1  # 开运算核；1 近似不做
@@ -187,8 +191,12 @@ def _validate_config(config: Config) -> None:
         raise ValueError("color_morph_close_kernel 必须 >= 1")
     if not 0.0 < config.color_yellow_area_weight <= 1.0:
         raise ValueError("color_yellow_area_weight 必须在 (0, 1]")
+    if config.color_min_pixel_saturation < 0 or config.color_min_pixel_value < 0:
+        raise ValueError("color_min_pixel_saturation/value 不能为负")
     if config.color_rb_mask_min_mean_s < 0 or config.color_rb_mask_min_mean_v < 0:
         raise ValueError("color_rb_mask_min_mean_s/v 不能为负")
+    if config.color_y_mask_min_mean_s < 0 or config.color_y_mask_min_mean_v < 0:
+        raise ValueError("color_y_mask_min_mean_s/v 不能为负")
     if config.TAG_SIZE_M <= 0.0 or config.tag_bottom_height_m <= 0.0:
         raise ValueError("TAG_SIZE_M 与 tag_bottom_height_m 必须 > 0")
     if config.min_marker_perimeter_rate <= 0.0 or config.min_tag_side_px <= 0.0:

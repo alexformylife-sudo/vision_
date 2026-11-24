@@ -222,7 +222,7 @@ def _largest_mask_component(
         return None
     areas = stats[1:, cv2.CC_STAT_AREA]
     index = 1 + int(np.argmax(areas))
-    if not _rb_mask_vivid(hsv, labels == index, config, color_name):
+    if not _mask_vivid(hsv, labels == index, config, color_name):
         return None
     row = stats[index]
     rect = (int(row[cv2.CC_STAT_LEFT]), int(row[cv2.CC_STAT_TOP]),
@@ -230,19 +230,22 @@ def _largest_mask_component(
     return int(row[cv2.CC_STAT_AREA]), rect
 
 
-def _rb_mask_vivid(hsv: np.ndarray, component, config: Config, color_name: str) -> bool:
-    if color_name not in ("R", "B"):
-        return True
+def _mask_vivid(hsv: np.ndarray, component, config: Config, color_name: str) -> bool:
     pixels = hsv[component]
     if pixels.size == 0:
         return False
     mean_s = float(pixels[:, 1].mean())
     mean_v = float(pixels[:, 2].mean())
-    return mean_s >= config.color_rb_mask_min_mean_s and mean_v >= config.color_rb_mask_min_mean_v
+    if color_name == "Y":
+        return mean_s >= config.color_y_mask_min_mean_s and mean_v >= config.color_y_mask_min_mean_v
+    if color_name in ("R", "B"):
+        return mean_s >= config.color_rb_mask_min_mean_s and mean_v >= config.color_rb_mask_min_mean_v
+    return True
 
 
 def _color_mask(hsv: np.ndarray, ranges: tuple[HsvRange, ...], config: Config) -> np.ndarray:
     merged = _hsv_in_ranges(hsv, ranges)
+    merged = cv2.bitwise_and(merged, _saturation_mask(hsv, config))
     if config.color_morph_kernel > 1:
         k = np.ones((config.color_morph_kernel, config.color_morph_kernel), np.uint8)
         merged = cv2.morphologyEx(merged, cv2.MORPH_OPEN, k)
@@ -263,6 +266,14 @@ def _color_rank_area(obs: ColorObservation, config: Config) -> float:
     if obs.color == "Y":
         return area * config.color_yellow_area_weight
     return area
+
+
+def _saturation_mask(hsv: np.ndarray, config: Config) -> np.ndarray:
+    s_lo = int(config.color_min_pixel_saturation)
+    v_lo = int(config.color_min_pixel_value)
+    sat = cv2.inRange(hsv[:, :, 1], s_lo, 255)
+    val = cv2.inRange(hsv[:, :, 2], v_lo, 255)
+    return cv2.bitwise_and(sat, val)
 
 
 def _hsv_in_ranges(hsv: np.ndarray, ranges: tuple[HsvRange, ...]) -> np.ndarray:
