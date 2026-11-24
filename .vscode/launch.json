@@ -1,0 +1,23 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "termux_vision (模块)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "termux_vision",
+      "cwd": "${workspaceFolder}",
+      "args": ["--source", "images", "--path", "${input:visionPath}"],
+      "console": "integratedTerminal",
+      "justMyCode": true
+    }
+  ],
+  "inputs": [
+    {
+      "id": "visionPath",
+      "type": "promptString",
+      "description": "图片/视频/流地址 --path",
+      "default": "."
+    }
+  ]
+}
