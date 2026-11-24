@@ -6,6 +6,8 @@
 
 `SIDE=L;TAG=0;COLOR=R;ALIGN=1` 或 `SIDE=N;TAG=-1;COLOR=N;ALIGN=0`
 
+`ALIGN=1` 表示本次任务 Tag 与颜色都已各自确认，不是当前帧两路同时有效。确认值锁存到进程结束，重启才重新识别。只确认一路时另一路仍为无效值，例如 `SIDE=L;TAG=0;COLOR=N;ALIGN=0`。
+
 模块与数据流见同目录 `设计.md`。
 
 ## 运行环境说明
@@ -83,7 +85,7 @@ python -m termux_vision --source http --path http://手机IP:8080/video \
 - `color_min_area`、高宽比、extent、形态学核大小
 - `min_marker_perimeter_rate`、`min_tag_side_px`、多 Tag 择优策略
 - 防抖帧数 / 秒数、目标帧率
-- `stale_frame_timeout_s`（默认 1.0s 无新帧即输出无效报文）、`open_timeout_ms` / `read_timeout_ms`（打开流时传给 FFmpeg）
+- `stale_frame_timeout_s`（默认 1.0s。超过后只清未确认连续计数，已锁存结果保留；未超时的空读不清计数）、`open_timeout_ms` / `read_timeout_ms`（打开流时传给 FFmpeg）
 - IP Webcam / RTSP 地址
 - TCP 主机与端口
 - 相机内参（已留接口，本版不测距）
