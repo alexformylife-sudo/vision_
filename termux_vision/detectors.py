@@ -186,33 +186,49 @@ def _pick_dominant_color(config: Config, search: ColorSearch) -> ColorObservatio
     }
     candidates: list[ColorObservation] = []
     for color in ALLOWED_COLORS:
-        candidates.extend(_color_blobs(search, config, color, ranges[color]))
+        blob = _color_blob_from_mask(search, config, color, ranges[color])
+        if blob is not None:
+            candidates.append(blob)
     valid = [obs for obs in candidates if _shape_ok(obs, config)]
     if not valid:
         return invalid_color(config.invalid_color)
     return max(valid, key=lambda obs: obs.contour_area)
 
 
-def _color_blobs(search: ColorSearch, config: Config, color_name: str, ranges: tuple[HsvRange, ...]) -> list[ColorObservation]:
-    mask = _cleaned_mask(search.hsv, ranges, config.color_morph_kernel)
-    contours, _hierarchy = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    return [_blob_from_contour(contour, search, color_name) for contour in contours]
+def _color_blob_from_mask(
+    search: ColorSearch,
+    config: Config,
+    color_name: str,
+    ranges: tuple[HsvRange, ...],
+) -> ColorObservation | None:
+    mask = _color_mask(search.hsv, ranges, config)
+    points = cv2.findNonZero(mask)
+    if points is None:
+        return None
+    x, y, w, h = cv2.boundingRect(points)
+    pixels = float(cv2.countNonZero(mask)) / (search.scale ** 2)
+    box, center = _box_on_frame((x, y, w, h), search)
+    return ColorObservation(color=color_name, contour_area=pixels, bounding_box=box, center=center)
 
 
-def _blob_from_contour(contour, search: ColorSearch, color_name: str) -> ColorObservation:
-    area = float(cv2.contourArea(contour)) / (search.scale ** 2)
-    box, center = _box_on_frame(cv2.boundingRect(contour), search)
-    return ColorObservation(color=color_name, contour_area=area, bounding_box=box, center=center)
+def _color_mask(hsv: np.ndarray, ranges: tuple[HsvRange, ...], config: Config) -> np.ndarray:
+    merged = _hsv_in_ranges(hsv, ranges)
+    if config.color_morph_kernel > 1:
+        k = np.ones((config.color_morph_kernel, config.color_morph_kernel), np.uint8)
+        merged = cv2.morphologyEx(merged, cv2.MORPH_OPEN, k)
+    ck = config.color_morph_close_kernel
+    if ck > 1:
+        k = np.ones((ck, ck), np.uint8)
+        merged = cv2.morphologyEx(merged, cv2.MORPH_CLOSE, k)
+    return merged
 
 
-def _cleaned_mask(hsv: np.ndarray, ranges: tuple[HsvRange, ...], kernel_size: int) -> np.ndarray:
+def _hsv_in_ranges(hsv: np.ndarray, ranges: tuple[HsvRange, ...]) -> np.ndarray:
     merged = cv2.inRange(hsv, np.array(ranges[0].lower(), np.uint8), np.array(ranges[0].upper(), np.uint8))
     for hsv_range in ranges[1:]:
         extra = cv2.inRange(hsv, np.array(hsv_range.lower(), np.uint8), np.array(hsv_range.upper(), np.uint8))
         merged = cv2.bitwise_or(merged, extra)
-    kernel = np.ones((kernel_size, kernel_size), np.uint8)
-    merged = cv2.morphologyEx(merged, cv2.MORPH_OPEN, kernel)
-    return cv2.morphologyEx(merged, cv2.MORPH_CLOSE, kernel)
+    return merged
 
 
 def _box_on_frame(rect: tuple[int, int, int, int], search: ColorSearch) -> tuple[tuple[int, int, int, int], tuple[float, float]]:
