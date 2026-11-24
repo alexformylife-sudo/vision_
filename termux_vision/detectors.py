@@ -202,13 +202,25 @@ def _color_blob_from_mask(
     ranges: tuple[HsvRange, ...],
 ) -> ColorObservation | None:
     mask = _color_mask(search.hsv, ranges, config)
-    points = cv2.findNonZero(mask)
-    if points is None:
+    picked = _largest_mask_component(mask)
+    if picked is None:
         return None
-    x, y, w, h = cv2.boundingRect(points)
-    pixels = float(cv2.countNonZero(mask)) / (search.scale ** 2)
-    box, center = _box_on_frame((x, y, w, h), search)
+    area_px, rect = picked
+    pixels = float(area_px) / (search.scale ** 2)
+    box, center = _box_on_frame(rect, search)
     return ColorObservation(color=color_name, contour_area=pixels, bounding_box=box, center=center)
+
+
+def _largest_mask_component(mask: np.ndarray) -> tuple[int, tuple[int, int, int, int]] | None:
+    count, _labels, stats, _centroids = cv2.connectedComponentsWithStats(mask, connectivity=8)
+    if count < 2:
+        return None
+    areas = stats[1:, cv2.CC_STAT_AREA]
+    index = 1 + int(np.argmax(areas))
+    row = stats[index]
+    rect = (int(row[cv2.CC_STAT_LEFT]), int(row[cv2.CC_STAT_TOP]),
+            int(row[cv2.CC_STAT_WIDTH]), int(row[cv2.CC_STAT_HEIGHT]))
+    return int(row[cv2.CC_STAT_AREA]), rect
 
 
 def _color_mask(hsv: np.ndarray, ranges: tuple[HsvRange, ...], config: Config) -> np.ndarray:

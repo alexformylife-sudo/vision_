@@ -11,7 +11,7 @@ runpy.run_path(str(Path(__file__).with_name("_bootstrap.py")), run_name="termux_
 import cv2
 import numpy as np
 
-from termux_vision.config import Config, RatioRoi
+from termux_vision.config import ALLOWED_COLORS, Config, RatioRoi
 from termux_vision.models import ColorObservation, TagObservation, VisionResult
 from termux_vision.util import resolve_debug_dir
 
@@ -22,6 +22,7 @@ COLOR_ROI_BGR = (0, 200, 0)
 CENTER_ROI_BGR = (0, 255, 255)
 TAG_BOX_BGR = (0, 255, 255)
 COLOR_BOX_BGR = (0, 0, 255)
+DET_LABEL_BGR = {"R": (0, 0, 255), "Y": (0, 255, 255), "B": (255, 0, 0), "N": (180, 180, 180)}
 TEXT_BGR = (255, 255, 255)
 TEXT_ORIGIN = (8, 24)
 TEXT_SCALE = 0.5
@@ -75,12 +76,10 @@ def annotate_frame(snapshot: DebugSnapshot, config: Config) -> np.ndarray:
     if snapshot.tag.corners is not None:
         points = np.int32(np.round(snapshot.tag.corners)).reshape(-1, 1, 2)
         cv2.polylines(vis, [points], True, TAG_BOX_BGR, BOX_THICKNESS)
-    if snapshot.color.bounding_box is not None:
-        x, y, w, h = snapshot.color.bounding_box
-        cv2.rectangle(vis, (x, y), (x + w, y + h), COLOR_BOX_BGR, BOX_THICKNESS)
+    _draw_color_detection(vis, snapshot.color)
     cv2.putText(
         vis,
-        snapshot.result.to_message().strip(),
+        f"LAT {snapshot.result.to_message().strip()}",
         TEXT_ORIGIN,
         cv2.FONT_HERSHEY_SIMPLEX,
         TEXT_SCALE,
@@ -132,6 +131,28 @@ def _hsv_summary(hsv: np.ndarray, config: Config) -> str:
         )
         parts.append(f"{name} mean={mean:.1f} {pct_text}")
     return " | ".join(parts)
+
+
+def _draw_color_detection(vis: np.ndarray, color: ColorObservation) -> None:
+    """标当帧颜色检测框；框旁 DET=R/Y/B/N 与锁存报文无关。"""
+    if color.bounding_box is None:
+        return
+    x, y, w, h = color.bounding_box
+    cv2.rectangle(vis, (x, y), (x + w, y + h), COLOR_BOX_BGR, BOX_THICKNESS)
+    code = color.color if color.color in ALLOWED_COLORS else "N"
+    label = f"DET={code}"
+    label_bgr = DET_LABEL_BGR.get(code, DET_LABEL_BGR["N"])
+    baseline = max(14, y - 4)
+    cv2.putText(
+        vis,
+        label,
+        (x, baseline),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        TEXT_SCALE,
+        label_bgr,
+        TEXT_THICKNESS + 1,
+        cv2.LINE_AA,
+    )
 
 
 def _draw_roi(vis: np.ndarray, roi: RatioRoi, color: tuple[int, int, int]) -> None:
