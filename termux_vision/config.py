@@ -107,21 +107,21 @@ class Config:
     camera_matrix: tuple[tuple[float, float, float], ...] | None = None
     dist_coeffs: tuple[float, ...] | None = None
 
-    # 颜色 ROI / HSV / 形态学：下列数值均为模拟样本导出初值，待赛场灯光与支架视角标定。
+    # 颜色 ROI / HSV：按 640×480 赛道实拍（荧光黄块、洋红圈、青绿圈、宝蓝圈）压缩初值。
     color_roi: RatioRoi = field(default_factory=lambda: RatioRoi(0.05, 0.20, 0.95, 0.98))
     color_roi_scale: float = 1.0  # 可调，<1 时在缩小后的 ROI 上认色以省算力
-    red_hsv_low: HsvRange = field(default_factory=lambda: HsvRange(0, 85, 70, 12, 255, 255))
-    red_hsv_high: HsvRange = field(default_factory=lambda: HsvRange(168, 85, 70, 179, 255, 255))
-    yellow_hsv: HsvRange = field(default_factory=lambda: HsvRange(22, 72, 58, 33, 255, 255))
+    red_hsv_low: HsvRange = field(default_factory=lambda: HsvRange(0, 100, 70, 8, 255, 255))
+    red_hsv_high: HsvRange = field(default_factory=lambda: HsvRange(154, 100, 70, 177, 255, 200))
+    yellow_hsv: HsvRange = field(default_factory=lambda: HsvRange(28, 95, 100, 50, 255, 220))
     color_yellow_area_weight: float = 0.72  # 选 dominant 时对黄掩膜面积打折，削弱误抢蓝/红
-    blue_hsv: HsvRange = field(default_factory=lambda: HsvRange(100, 85, 70, 125, 255, 255))
-    color_min_pixel_saturation: int = 72  # 掩膜内逐像素 S 下限，去掉低饱噪点
-    color_min_pixel_value: int = 68
-    color_rb_mask_min_mean_s: float = 85.0
-    color_rb_mask_min_mean_v: float = 70.0
-    color_y_mask_min_mean_s: float = 78.0
-    color_y_mask_min_mean_v: float = 65.0
-    color_min_area: int = 480  # 最大连通域像素数下限
+    blue_hsv: HsvRange = field(default_factory=lambda: HsvRange(106, 88, 72, 122, 255, 195))
+    color_min_pixel_saturation: int = 88
+    color_min_pixel_value: int = 72
+    color_rb_mask_min_mean_s: float = 82.0
+    color_rb_mask_min_mean_v: float = 68.0
+    color_y_mask_min_mean_s: float = 95.0
+    color_y_mask_min_mean_v: float = 95.0
+    color_min_area: int = 400
     color_min_height_width: float = 0.35
     color_min_extent: float = 0.15  # 暗部/高光导致掩膜稀疏时仍过
     color_morph_kernel: int = 1  # 开运算核；1 近似不做

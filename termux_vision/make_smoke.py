@@ -13,10 +13,11 @@ TAG_PIXELS = 120
 TAG_ORIGIN = (80, 260)
 BLOCK_SIZE = (90, 70)  # 高, 宽，与赛场物块高大于底面直径一致
 BLOCK_ORIGIN = (300, 280)
+# BGR 近似赛场洋红圈、荧光黄块、宝蓝圈（与 config 默认 HSV 一致，非纯 RGB 红/蓝）。
 BLOCK_COLORS = {
-    "red": (40, 40, 200),
-    "yellow": (30, 210, 210),
-    "blue": (200, 40, 40),
+    "red": (152, 39, 180),
+    "yellow": (29, 210, 180),
+    "blue": (140, 67, 30),
 }
 
 
