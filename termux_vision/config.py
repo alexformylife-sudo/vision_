@@ -108,16 +108,16 @@ class Config:
     dist_coeffs: tuple[float, ...] | None = None
 
     # 颜色 ROI / HSV / 形态学：下列数值均为模拟样本导出初值，待赛场灯光与支架视角标定。
-    color_roi: RatioRoi = field(default_factory=lambda: RatioRoi(0.15, 0.40, 0.85, 0.95))
+    color_roi: RatioRoi = field(default_factory=lambda: RatioRoi(0.05, 0.20, 0.95, 0.98))
     color_roi_scale: float = 1.0  # 可调，<1 时在缩小后的 ROI 上认色以省算力
-    red_hsv_low: HsvRange = field(default_factory=lambda: HsvRange(0, 60, 60, 15, 255, 255))
-    red_hsv_high: HsvRange = field(default_factory=lambda: HsvRange(165, 60, 60, 179, 255, 255))
-    yellow_hsv: HsvRange = field(default_factory=lambda: HsvRange(15, 60, 60, 40, 255, 255))
-    blue_hsv: HsvRange = field(default_factory=lambda: HsvRange(100, 60, 60, 140, 255, 255))
-    color_min_area: int = 250  # 放宽最小面积，便于远处/偏暗块；待现场再收紧
-    color_min_height_width: float = 0.85  # 略放宽高宽比，待标定
-    color_min_extent: float = 0.45  # 略放宽填充度，减少漏检；待标定
-    color_morph_kernel: int = 3  # 待标定
+    red_hsv_low: HsvRange = field(default_factory=lambda: HsvRange(0, 25, 25, 20, 255, 255))
+    red_hsv_high: HsvRange = field(default_factory=lambda: HsvRange(160, 25, 25, 179, 255, 255))
+    yellow_hsv: HsvRange = field(default_factory=lambda: HsvRange(10, 25, 25, 45, 255, 255))
+    blue_hsv: HsvRange = field(default_factory=lambda: HsvRange(90, 25, 25, 150, 255, 255))
+    color_min_area: int = 80  # 远处小块；误检多时可现场加大
+    color_min_height_width: float = 0.35  # 极宽形状过滤，减轻漏检
+    color_min_extent: float = 0.2  # 允许破碎/偏扁轮廓
+    color_morph_kernel: int = 1  # 1 近似不做开运算，避免抹掉小色块
     hsv_center_ratio: float = 0.3  # 调参模式：颜色 ROI 中心区域占比，可调
     hsv_percentiles: tuple[int, ...] = (10, 50, 90)
 

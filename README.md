@@ -61,8 +61,8 @@ HSV 调参（保存标出 Tag ROI、颜色 ROI 及其中心区的截图，并打
 
 ```bash
 python -m termux_vision --source http --path http://手机IP:8080/video \
-  --tag-map 0:L,1:R --tag-roi 0,0,1,1 --color-roi 0.15,0.4,0.85,0.95 \
-  --stable-frames 5 --min-color-area 250 --fps 15 \
+  --tag-map 0:L,1:R --tag-roi 0,0,1,1 --color-roi 0.05,0.2,0.95,0.98 \
+  --stable-frames 5 --min-color-area 80 --fps 15 \
   --tcp 127.0.0.1:9000 --send-policy on_change \
   --save-debug --debug-dir /sdcard/vision_debug --hsv-stats
 ```
