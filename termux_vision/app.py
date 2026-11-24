@@ -115,7 +115,7 @@ def _run_loop(pipeline: Pipeline) -> int:
             continue
         pipeline.last_frame_at = started
         pipeline.stale = False
-        _process_frame(pipeline, retrieved.frame, processed)
+        _process_frame(pipeline, retrieved.frame, processed, retrieved.seq)
         processed += 1
         _idle_until(started, pipeline.config, got_frame=True)
 
@@ -166,7 +166,7 @@ def _save_calib_image(pipeline: Pipeline, frame, label: str) -> None:
         pipeline.save_images = False
 
 
-def _process_frame(pipeline: Pipeline, raw_frame, frame_index: int) -> None:
+def _process_frame(pipeline: Pipeline, raw_frame, frame_index: int, source_seq: int = -1) -> None:
     frame = _prepare_or_none(raw_frame, pipeline.config)
     if frame is None:
         _send_invalid(pipeline)
@@ -175,7 +175,9 @@ def _process_frame(pipeline: Pipeline, raw_frame, frame_index: int) -> None:
     color = pipeline.color_detector.detect(frame)
     result = pipeline.temporal.update(tag, color)
     pipeline.sender.send(result.to_message())
-    _maybe_debug(pipeline, DebugSnapshot(frame, tag, color, result, frame_index))
+    debug_index = source_seq if source_seq >= 0 else frame_index + 1
+    snap = DebugSnapshot(frame.copy(), tag, color, result, debug_index)
+    _maybe_debug(pipeline, snap)
 
 
 def _prepare_or_none(raw_frame, config: Config):
