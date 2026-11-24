@@ -25,7 +25,7 @@ from termux_vision.frame_source import FrameSource, build_source
 from termux_vision.models import invalid_color, invalid_tag
 from termux_vision.result_sender import ResultSender, build_sender
 from termux_vision.temporal_filter import TemporalFilter
-from termux_vision.util import prepare_frame
+from termux_vision.util import prepare_frame, resolve_debug_dir
 
 LOGGER = logging.getLogger(__name__)
 
@@ -41,6 +41,7 @@ class Pipeline:
     temporal: TemporalFilter
     sender: ResultSender
     save_images: bool
+    debug_save_serial: int = 0
     last_frame_at: float = 0.0
     stale: bool = False
 
@@ -58,6 +59,7 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _run_with_pipeline(config: Config, sender: ResultSender) -> int:
+    config = _config_for_debug_run(config)
     source = build_source(config)
     pipeline = Pipeline(
         config=config,
@@ -115,7 +117,7 @@ def _run_loop(pipeline: Pipeline) -> int:
             continue
         pipeline.last_frame_at = started
         pipeline.stale = False
-        _process_frame(pipeline, retrieved.frame, processed, retrieved.seq)
+        _process_frame(pipeline, retrieved.frame, processed)
         processed += 1
         _idle_until(started, pipeline.config, got_frame=True)
 
@@ -166,7 +168,7 @@ def _save_calib_image(pipeline: Pipeline, frame, label: str) -> None:
         pipeline.save_images = False
 
 
-def _process_frame(pipeline: Pipeline, raw_frame, frame_index: int, source_seq: int = -1) -> None:
+def _process_frame(pipeline: Pipeline, raw_frame, frame_index: int) -> None:
     frame = _prepare_or_none(raw_frame, pipeline.config)
     if frame is None:
         _send_invalid(pipeline)
@@ -175,9 +177,17 @@ def _process_frame(pipeline: Pipeline, raw_frame, frame_index: int, source_seq: 
     color = pipeline.color_detector.detect(frame)
     result = pipeline.temporal.update(tag, color)
     pipeline.sender.send(result.to_message())
-    debug_index = source_seq if source_seq >= 0 else frame_index + 1
-    snap = DebugSnapshot(frame, tag, color, result, debug_index)
-    _maybe_debug(pipeline, snap)
+    snap = DebugSnapshot(frame, tag, color, result, 0)
+    _maybe_debug(pipeline, snap, frame_index)
+
+
+def _config_for_debug_run(config: Config) -> Config:
+    if not (config.save_debug or config.hsv_calib):
+        return config
+    stamp = time.strftime("%Y%m%d_%H%M%S", time.localtime())
+    run_dir = resolve_debug_dir(config) / stamp
+    LOGGER.info("本次调试图子目录: %s", run_dir)
+    return replace(config, debug_dir=str(run_dir))
 
 
 def _prepare_or_none(raw_frame, config: Config):
@@ -188,12 +198,15 @@ def _prepare_or_none(raw_frame, config: Config):
         return None
 
 
-def _maybe_debug(pipeline: Pipeline, snapshot: DebugSnapshot) -> None:
+def _maybe_debug(pipeline: Pipeline, snapshot: DebugSnapshot, frame_index: int) -> None:
+    label = f"frame_{frame_index + 1:04d}"
     if pipeline.config.print_hsv_stats:
-        log_center_hsv_stats(snapshot.frame, pipeline.config, f"frame_{snapshot.frame_index:04d}")
+        log_center_hsv_stats(snapshot.frame, pipeline.config, label)
     if not (pipeline.config.save_debug and pipeline.save_images):
         return
-    if not save_debug_frame(snapshot, pipeline.config):
+    pipeline.debug_save_serial += 1
+    snap = replace(snapshot, frame_index=pipeline.debug_save_serial)
+    if not save_debug_frame(snap, pipeline.config):
         LOGGER.warning("调试存图失败，已关闭调试存图，主循环继续")
         pipeline.save_images = False
 

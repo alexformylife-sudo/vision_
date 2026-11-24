@@ -39,6 +39,8 @@ cd /path/to/termux_vision   # 仓库根，不是内层 termux_vision/ 包目录
 
 调试存图（标注两个 ROI 和检测框，只用 `imwrite`）：
 
+每次运行会在 `--debug-dir` 下新建时间子目录（如 `20251124_194530/`），其内 `frame_0001.png` 连续编号，避免与历次测试文件混在同一层。
+
 ```bash
 .venv/bin/python -m termux_vision --source images --path /path/to/dir \
   --save-debug --debug-dir /sdcard/vision_debug
