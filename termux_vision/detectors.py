@@ -202,7 +202,7 @@ def _color_blob_from_mask(
     ranges: tuple[HsvRange, ...],
 ) -> ColorObservation | None:
     mask = _color_mask(search.hsv, ranges, config)
-    picked = _largest_mask_component(mask)
+    picked = _largest_mask_component(mask, search.hsv, config, color_name)
     if picked is None:
         return None
     area_px, rect = picked
@@ -211,16 +211,34 @@ def _color_blob_from_mask(
     return ColorObservation(color=color_name, contour_area=pixels, bounding_box=box, center=center)
 
 
-def _largest_mask_component(mask: np.ndarray) -> tuple[int, tuple[int, int, int, int]] | None:
-    count, _labels, stats, _centroids = cv2.connectedComponentsWithStats(mask, connectivity=8)
+def _largest_mask_component(
+    mask: np.ndarray,
+    hsv: np.ndarray,
+    config: Config,
+    color_name: str,
+) -> tuple[int, tuple[int, int, int, int]] | None:
+    count, labels, stats, _centroids = cv2.connectedComponentsWithStats(mask, connectivity=8)
     if count < 2:
         return None
     areas = stats[1:, cv2.CC_STAT_AREA]
     index = 1 + int(np.argmax(areas))
+    if not _rb_mask_vivid(hsv, labels == index, config, color_name):
+        return None
     row = stats[index]
     rect = (int(row[cv2.CC_STAT_LEFT]), int(row[cv2.CC_STAT_TOP]),
             int(row[cv2.CC_STAT_WIDTH]), int(row[cv2.CC_STAT_HEIGHT]))
     return int(row[cv2.CC_STAT_AREA]), rect
+
+
+def _rb_mask_vivid(hsv: np.ndarray, component, config: Config, color_name: str) -> bool:
+    if color_name not in ("R", "B"):
+        return True
+    pixels = hsv[component]
+    if pixels.size == 0:
+        return False
+    mean_s = float(pixels[:, 1].mean())
+    mean_v = float(pixels[:, 2].mean())
+    return mean_s >= config.color_rb_mask_min_mean_s and mean_v >= config.color_rb_mask_min_mean_v
 
 
 def _color_mask(hsv: np.ndarray, ranges: tuple[HsvRange, ...], config: Config) -> np.ndarray:
