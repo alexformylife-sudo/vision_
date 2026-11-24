@@ -110,13 +110,13 @@ class Config:
     # 颜色 ROI / HSV / 形态学：下列数值均为模拟样本导出初值，待赛场灯光与支架视角标定。
     color_roi: RatioRoi = field(default_factory=lambda: RatioRoi(0.15, 0.40, 0.85, 0.95))
     color_roi_scale: float = 1.0  # 可调，<1 时在缩小后的 ROI 上认色以省算力
-    red_hsv_low: HsvRange = field(default_factory=lambda: HsvRange(0, 100, 100, 10, 255, 255))
-    red_hsv_high: HsvRange = field(default_factory=lambda: HsvRange(170, 100, 100, 179, 255, 255))
-    yellow_hsv: HsvRange = field(default_factory=lambda: HsvRange(20, 100, 100, 35, 255, 255))
-    blue_hsv: HsvRange = field(default_factory=lambda: HsvRange(110, 100, 100, 130, 255, 255))
-    color_min_area: int = 400  # 按 640x480 估算的初值，待标定
-    color_min_height_width: float = 1.0  # 排除扁平场地色环，待标定
-    color_min_extent: float = 0.6  # 待标定
+    red_hsv_low: HsvRange = field(default_factory=lambda: HsvRange(0, 60, 60, 15, 255, 255))
+    red_hsv_high: HsvRange = field(default_factory=lambda: HsvRange(165, 60, 60, 179, 255, 255))
+    yellow_hsv: HsvRange = field(default_factory=lambda: HsvRange(15, 60, 60, 40, 255, 255))
+    blue_hsv: HsvRange = field(default_factory=lambda: HsvRange(100, 60, 60, 140, 255, 255))
+    color_min_area: int = 250  # 放宽最小面积，便于远处/偏暗块；待现场再收紧
+    color_min_height_width: float = 0.85  # 略放宽高宽比，待标定
+    color_min_extent: float = 0.45  # 略放宽填充度，减少漏检；待标定
     color_morph_kernel: int = 3  # 待标定
     hsv_center_ratio: float = 0.3  # 调参模式：颜色 ROI 中心区域占比，可调
     hsv_percentiles: tuple[int, ...] = (10, 50, 90)
