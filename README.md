@@ -81,7 +81,7 @@ python -m termux_vision --source http --path http://手机IP:8080/video \
 
 仍待赛场灯光、支架视角和电控对端确认：
 
-- HSV 上下限（当前为模拟样本导出初值）
+- HSV 上下限（默认已按 22 张赛道实拍压缩：洋红→R、荧光黄→Y、宝蓝圈→B；全场多色时 dominant 仍取最大连通域）
 - Tag ROI / 颜色 ROI 比例（Tag 默认全图，颜色默认画面中下部）
 - `tag_id_to_side` 的最终 ID
 - `color_min_area`、高宽比、extent、形态学核大小
