@@ -87,7 +87,7 @@ class Config:
     reconnect_delay_s: float = 1.0  # 可调
     open_timeout_ms: int = 2000  # 可调，打开流时传给 FFmpeg
     read_timeout_ms: int = 2000  # 可调，打开流时传给 FFmpeg
-    stale_frame_timeout_s: float = 1.0  # 可调，超时无新帧即输出无效报文
+    stale_frame_timeout_s: float = 1.0  # 可调。超时无新帧只清未确认连续计数，已锁存结果保留
     thread_join_timeout_s: float = 2.0
     image_emit_each: int = 1
     image_suffixes: tuple[str, ...] = (".png", ".jpg", ".jpeg", ".bmp", ".webp")

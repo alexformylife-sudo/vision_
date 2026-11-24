@@ -124,13 +124,14 @@ def _handle_no_new_frame(pipeline: Pipeline, now: float) -> None:
     if now - pipeline.last_frame_at < pipeline.config.stale_frame_timeout_s:
         return
     if not pipeline.stale:
-        LOGGER.warning("超过 %.1fs 无新帧，防抖清零并输出无效报文", pipeline.config.stale_frame_timeout_s)
+        LOGGER.warning("超过 %.1fs 无新帧，未确认连续计数清零，已锁存结果保留", pipeline.config.stale_frame_timeout_s)
         pipeline.stale = True
     pipeline.temporal.reset()
     _send_invalid(pipeline)
 
 
 def _send_invalid(pipeline: Pipeline) -> None:
+    """无效观测仍走 TemporalFilter。已锁存的路不会被这次观测覆盖。"""
     tag = invalid_tag(pipeline.config.invalid_side, pipeline.config.invalid_tag_id)
     color = invalid_color(pipeline.config.invalid_color)
     result = pipeline.temporal.update(tag, color)
