@@ -176,7 +176,7 @@ def _process_frame(pipeline: Pipeline, raw_frame, frame_index: int, source_seq: 
     result = pipeline.temporal.update(tag, color)
     pipeline.sender.send(result.to_message())
     debug_index = source_seq if source_seq >= 0 else frame_index + 1
-    snap = DebugSnapshot(frame.copy(), tag, color, result, debug_index)
+    snap = DebugSnapshot(frame, tag, color, result, debug_index)
     _maybe_debug(pipeline, snap)
 
 

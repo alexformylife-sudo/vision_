@@ -13,6 +13,11 @@ import numpy as np
 from termux_vision.config import Config
 
 
+def freeze_frame(frame: np.ndarray) -> np.ndarray:
+    """深拷贝为连续内存，避免与抓帧线程或 OpenCV 内缓冲共享导致撕裂。"""
+    return np.ascontiguousarray(frame).copy()
+
+
 def interruptible_sleep(is_running, duration_s: float, slice_s: float) -> None:
     deadline = time.monotonic() + duration_s
     while is_running() and time.monotonic() < deadline:
@@ -38,7 +43,7 @@ def resize_to_config(frame: np.ndarray, config: Config) -> np.ndarray:
 
 
 def prepare_frame(frame: np.ndarray, config: Config) -> np.ndarray:
-    return resize_to_config(ensure_bgr(frame), config)
+    return freeze_frame(resize_to_config(ensure_bgr(frame), config))
 
 
 def resolve_debug_dir(config: Config) -> Path:

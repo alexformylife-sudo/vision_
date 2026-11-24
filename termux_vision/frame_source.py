@@ -14,7 +14,7 @@ import numpy as np
 
 from termux_vision.config import Config
 from termux_vision.models import FrameRead
-from termux_vision.util import interruptible_sleep
+from termux_vision.util import freeze_frame, interruptible_sleep
 
 LOGGER = logging.getLogger(__name__)
 
@@ -47,7 +47,7 @@ class ImageDirSource:
     def read(self) -> FrameRead:
         if self._repeats_left > 0 and self._current_frame is not None:
             self._repeats_left -= 1
-            return FrameRead(frame=self._current_frame.copy(), ended=False)
+            return FrameRead(frame=freeze_frame(self._current_frame), ended=False)
         return self._load_next_image()
 
     def close(self) -> None:
@@ -63,7 +63,7 @@ class ImageDirSource:
                 continue
             self._current_frame = frame
             self._repeats_left = self._config.image_emit_each - 1
-            return FrameRead(frame=frame.copy(), ended=False)
+            return FrameRead(frame=freeze_frame(frame), ended=False)
         return FrameRead(frame=None, ended=True)
 
 
@@ -86,7 +86,7 @@ class VideoFileSource:
         ok, frame = self._capture.read()
         if not ok or frame is None:
             return FrameRead(frame=None, ended=True)
-        return FrameRead(frame=frame.copy(), ended=False)
+        return FrameRead(frame=freeze_frame(frame), ended=False)
 
     def close(self) -> None:
         if self._capture is not None:
@@ -119,7 +119,7 @@ class StreamSource:
             if self._latest is None or self._seq == self._delivered_seq:
                 return FrameRead(frame=None, ended=False)
             self._delivered_seq = self._seq
-            return FrameRead(frame=self._latest.copy(), ended=False, seq=self._seq)
+            return FrameRead(frame=freeze_frame(self._latest), ended=False, seq=self._seq)
 
     def close(self) -> None:
         with self._lock:
@@ -137,7 +137,7 @@ class StreamSource:
 
     def _store_latest(self, frame: np.ndarray | None) -> None:
         with self._lock:
-            self._latest = None if frame is None else frame.copy()
+            self._latest = None if frame is None else freeze_frame(frame)
             if frame is not None:
                 self._seq += 1
 

@@ -13,7 +13,7 @@ import numpy as np
 
 from termux_vision.config import ALLOWED_COLORS, Config, RatioRoi
 from termux_vision.models import ColorObservation, TagObservation, VisionResult
-from termux_vision.util import resolve_debug_dir
+from termux_vision.util import freeze_frame, resolve_debug_dir
 
 LOGGER = logging.getLogger(__name__)
 
@@ -44,7 +44,7 @@ def save_debug_frame(snapshot: DebugSnapshot, config: Config) -> bool:
     output_dir = _ensure_dir(config)
     if output_dir is None:
         return False
-    vis = annotate_frame(snapshot, config)
+    vis = freeze_frame(annotate_frame(snapshot, config))
     path = output_dir / f"frame_{snapshot.frame_index:04d}.png"
     return _write_image(path, vis)
 
@@ -172,13 +172,29 @@ def _ensure_dir(config: Config) -> Path | None:
 
 
 def _write_image(path: Path, image: np.ndarray) -> bool:
+    tmp_path = path.with_name(path.name + ".tmp")
     try:
-        ok = cv2.imwrite(str(path), image)
+        ok = cv2.imwrite(str(tmp_path), image)
     except (cv2.error, OSError) as exc:
         LOGGER.warning("imwrite 异常 %s: %s", path, exc)
+        _remove_if_exists(tmp_path)
         return False
     if not ok:
         LOGGER.warning("imwrite 失败（目录可能只读）: %s", path)
+        _remove_if_exists(tmp_path)
+        return False
+    try:
+        tmp_path.replace(path)
+    except OSError as exc:
+        LOGGER.warning("调试图重命名失败 %s: %s", path, exc)
+        _remove_if_exists(tmp_path)
         return False
     LOGGER.info("已保存调试图: %s", path)
     return True
+
+
+def _remove_if_exists(path: Path) -> None:
+    try:
+        path.unlink(missing_ok=True)
+    except OSError as exc:
+        LOGGER.debug("删除临时调试图跳过 %s: %s", path, exc)
