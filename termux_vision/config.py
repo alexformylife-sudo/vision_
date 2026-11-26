@@ -107,25 +107,26 @@ class Config:
     camera_matrix: tuple[tuple[float, float, float], ...] | None = None
     dist_coeffs: tuple[float, ...] | None = None
 
-    # 颜色 ROI / HSV / 形态学：下列数值均为模拟样本导出初值，待赛场灯光与支架视角标定。
+    # 颜色 ROI / HSV / 形态学：阈值依据现场照片初步标定，仍需实车灯光与视角验证。
     color_roi: RatioRoi = field(default_factory=lambda: RatioRoi(0.05, 0.20, 0.95, 0.98))
     color_roi_scale: float = 1.0  # 可调，<1 时在缩小后的 ROI 上认色以省算力
-    red_hsv_low: HsvRange = field(default_factory=lambda: HsvRange(0, 85, 70, 12, 255, 255))
-    red_hsv_high: HsvRange = field(default_factory=lambda: HsvRange(168, 85, 70, 179, 255, 255))
-    yellow_hsv: HsvRange = field(default_factory=lambda: HsvRange(22, 72, 58, 33, 255, 255))
+    red_hsv_low: HsvRange = field(default_factory=lambda: HsvRange(0, 100, 35, 12, 255, 255))
+    red_hsv_high: HsvRange = field(default_factory=lambda: HsvRange(145, 100, 35, 179, 255, 255))
+    yellow_hsv: HsvRange = field(default_factory=lambda: HsvRange(22, 120, 68, 40, 255, 255))
     color_yellow_area_weight: float = 0.72  # 选 dominant 时对黄掩膜面积打折，削弱误抢蓝/红
-    blue_hsv: HsvRange = field(default_factory=lambda: HsvRange(100, 85, 70, 125, 255, 255))
-    color_min_pixel_saturation: int = 72  # 掩膜内逐像素 S 下限，去掉低饱噪点
-    color_min_pixel_value: int = 68
-    color_rb_mask_min_mean_s: float = 85.0
-    color_rb_mask_min_mean_v: float = 70.0
-    color_y_mask_min_mean_s: float = 78.0
-    color_y_mask_min_mean_v: float = 65.0
+    blue_hsv: HsvRange = field(default_factory=lambda: HsvRange(100, 145, 70, 125, 255, 255))
+    color_min_pixel_saturation: int = 100  # 掩膜内逐像素 S 下限，去掉低饱噪点
+    color_min_pixel_value: int = 35
+    color_rb_mask_min_mean_s: float = 120.0
+    color_rb_mask_min_mean_v: float = 60.0
+    color_y_mask_min_mean_s: float = 140.0
+    color_y_mask_min_mean_v: float = 68.0
     color_min_area: int = 480  # 最大连通域像素数下限
     color_min_height_width: float = 0.35
-    color_min_extent: float = 0.15  # 暗部/高光导致掩膜稀疏时仍过
+    color_min_extent: float = 0.62  # 排除低填充率色块（包括部分被裁切的放置圈）
+    color_max_hole_ratio: float = 0.15  # 内部空洞面积 / 外轮廓面积；排除完整放置圈
     color_morph_kernel: int = 1  # 开运算核；1 近似不做
-    color_morph_close_kernel: int = 7  # 连通色块内缝隙；过大易把桌面噪点并成一片黄
+    color_morph_close_kernel: int = 3  # 连通色块内缝隙；过大易把桌面噪点并成一片黄
     hsv_center_ratio: float = 0.3  # 调参模式：颜色 ROI 中心区域占比，可调
     hsv_percentiles: tuple[int, ...] = (10, 50, 90)
 
@@ -189,6 +190,8 @@ def _validate_config(config: Config) -> None:
         raise ValueError("color_min_area 与 color_morph_kernel 必须 >= 1")
     if config.color_morph_close_kernel < 1:
         raise ValueError("color_morph_close_kernel 必须 >= 1")
+    if not 0.0 < config.color_min_extent <= 1.0 or not 0.0 <= config.color_max_hole_ratio <= 1.0:
+        raise ValueError("color_min_extent 必须在 (0,1]，color_max_hole_ratio 必须在 [0,1]")
     if not 0.0 < config.color_yellow_area_weight <= 1.0:
         raise ValueError("color_yellow_area_weight 必须在 (0, 1]")
     if config.color_min_pixel_saturation < 0 or config.color_min_pixel_value < 0:

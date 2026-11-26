@@ -202,7 +202,7 @@ def _color_blob_from_mask(
     ranges: tuple[HsvRange, ...],
 ) -> ColorObservation | None:
     mask = _color_mask(search.hsv, ranges, config)
-    picked = _largest_mask_component(mask, search.hsv, config, color_name)
+    picked = _largest_mask_component(mask, search.hsv, config, color_name, search.scale)
     if picked is None:
         return None
     area_px, rect = picked
@@ -216,18 +216,37 @@ def _largest_mask_component(
     hsv: np.ndarray,
     config: Config,
     color_name: str,
+    scale: float = 1.0,
 ) -> tuple[int, tuple[int, int, int, int]] | None:
     count, labels, stats, _centroids = cv2.connectedComponentsWithStats(mask, connectivity=8)
     if count < 2:
         return None
-    areas = stats[1:, cv2.CC_STAT_AREA]
-    index = 1 + int(np.argmax(areas))
-    if not _mask_vivid(hsv, labels == index, config, color_name):
-        return None
-    row = stats[index]
-    rect = (int(row[cv2.CC_STAT_LEFT]), int(row[cv2.CC_STAT_TOP]),
-            int(row[cv2.CC_STAT_WIDTH]), int(row[cv2.CC_STAT_HEIGHT]))
-    return int(row[cv2.CC_STAT_AREA]), rect
+    # 按面积降序筛选，不让一个较大的干扰区域遮蔽较小的有效候选。
+    for index in sorted(range(1, count), key=lambda i: int(stats[i, cv2.CC_STAT_AREA]), reverse=True):
+        x, y, w, h, area = map(int, stats[index])
+        if area / (scale ** 2) < config.color_min_area:
+            break
+        if h / w < config.color_min_height_width or area / (w * h) < config.color_min_extent:
+            continue
+        component = labels[y:y + h, x:x + w] == index
+        if not _mask_vivid(hsv[y:y + h, x:x + w], component, config, color_name):
+            continue
+        # 仅检查该连通域，避免相邻物体影响空洞判断。
+        if _hole_ratio(component) > config.color_max_hole_ratio:
+            continue
+        return area, (x, y, w, h)
+    return None
+
+
+def _hole_ratio(component: np.ndarray) -> float:
+    contours, hierarchy = cv2.findContours(
+        component.astype(np.uint8) * 255, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE
+    )
+    if hierarchy is None:
+        return 0.0
+    outer = sum(cv2.contourArea(c) for c, meta in zip(contours, hierarchy[0]) if meta[3] < 0)
+    holes = sum(cv2.contourArea(c) for c, meta in zip(contours, hierarchy[0]) if meta[3] >= 0)
+    return holes / outer if outer > 0 else 0.0
 
 
 def _mask_vivid(hsv: np.ndarray, component, config: Config, color_name: str) -> bool:
